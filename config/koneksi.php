@@ -3,7 +3,7 @@
 $hostname = gethostname();
 // echo $hostname;
 // die;
-$serverName = "DESKTOP-LRQ27LE";
+$serverName = "DESKTOP-1V8I9K6\SQLEXPRESS";
 
 $database = "inventory";
 $username = "sa";

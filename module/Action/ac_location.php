@@ -68,7 +68,6 @@ function location_save($id, $location_name) {
     }
 }
 
-
 function location_toggle_status($id) {
     if (empty($id) || !is_numeric($id)) {
         return [

@@ -21,7 +21,7 @@ $locations = location_index();
                 </a>
             </div>
             <div class="d-flex align-items-center gap-2 page-header-right-items-wrapper">
-                <a href="index.php?page=location-form" class="btn btn-primary">
+                <a href="javascript:void(0)" onclick="openinputLocationModal()" class="btn btn-primary">
                     <i class="feather-plus me-2"></i>
                     <span>New Location</span>
                 </a>
@@ -64,7 +64,13 @@ $locations = location_index();
                                             </td>
                                             <td>
                                                 <div class="hstack gap-2 justify-content-end">
+<<<<<<< HEAD
                                                     <a href="index.php?page=location-form&id=<?= $row["id"] ?>"
+=======
+                                                    <a href="javascript:void(0);"
+                                                        data-id="<?= $row["id"] ?>"
+                                                        onclick="openeditLocationModal(<?= $row["id"] ?>)"
+>>>>>>> 5f36383e867df2f30a57c0674e7ae7682d4a4d9e
                                                         class="avatar-text avatar-md" title="Edit">
                                                         <i class="feather feather-edit-3"></i>
                                                     </a>
@@ -93,6 +99,12 @@ $locations = location_index();
     </div>
 </div>
 
+<<<<<<< HEAD
+=======
+<?php include __DIR__ . '/modal/modal_input_location.php'; ?>
+<?php include __DIR__ . '/modal/modal_edit_location.php'; ?>
+
+>>>>>>> 5f36383e867df2f30a57c0674e7ae7682d4a4d9e
 <script>
     function toggleStatus(id, actionText) {
     if (typeof Swal === 'undefined') {
