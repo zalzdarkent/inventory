@@ -425,6 +425,38 @@ function get_inventory_summary($start_date, $end_date) {
     return $summary;
 }
 
+function get_location_summary($start_date, $end_date) {
+    global $koneksi;
+    $start = $start_date . ' 00:00:00';
+    $end = $end_date . ' 23:59:59';
+    
+    $sql = "SELECT 
+                l.id as location_id,
+                l.location as location_name,
+                ISNULL(l.location, 'Unassigned') as location_display,
+                ISNULL(SUM(CASE WHEN il.created_at < ? THEN il.qty_mutation ELSE 0 END), 0) as begin_balance,
+                ISNULL(SUM(CASE WHEN il.qty_mutation > 0 AND il.created_at >= ? AND il.created_at <= ? THEN il.qty_mutation ELSE 0 END), 0) as total_in,
+                ISNULL(SUM(CASE WHEN il.qty_mutation < 0 AND (il.transaction_type = 'OUT' OR (il.transaction_type = 'MOVE' AND il.notes LIKE '%Transfer to%')) AND il.created_at >= ? AND il.created_at <= ? THEN ABS(il.qty_mutation) ELSE 0 END), 0) as total_out,
+                ISNULL(SUM(CASE WHEN il.transaction_type = 'ADJUST' AND il.created_at >= ? AND il.created_at <= ? THEN il.qty_mutation ELSE 0 END), 0) as total_adj
+            FROM item_location l
+            LEFT JOIN inventory_log il ON il.location_id = l.id
+            LEFT JOIN item_table i ON il.item_id = i.id AND i.is_active = 1
+            GROUP BY l.id, l.location
+            ORDER BY l.location ASC";
+            
+    $params = array($start, $start, $end, $start, $end, $start, $end);
+    $stmt = sqlsrv_query($koneksi, $sql, $params);
+    if ($stmt === false) {
+        return [];
+    }
+    $summary = [];
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        $row['end_balance'] = $row['begin_balance'] + $row['total_in'] - $row['total_out'] + $row['total_adj'];
+        $summary[] = $row;
+    }
+    return $summary;
+}
+
 function get_daily_movement_stats($start, $end) {
     global $koneksi;
     

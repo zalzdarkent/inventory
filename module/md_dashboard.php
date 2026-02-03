@@ -2,12 +2,13 @@
 require_once __DIR__ . '/Action/ac_dashboard.php';
 $start_date = date('Y-m-01');
 $end_date = date('Y-m-t');
-$summary = get_inventory_summary($start_date, $end_date);
+$summary_location = get_location_summary($start_date, $end_date);
+$summary_item = get_inventory_summary($start_date, $end_date);
 $total_stock = 0;
 $total_in = 0;
 $total_out = 0;
 $total_adj = 0;
-foreach ($summary as $row) {
+foreach ($summary_location as $row) {
     $total_stock += $row['end_balance'];
     $total_in += $row['total_in'];
     $total_out += $row['total_out'];
@@ -326,62 +327,125 @@ $occupancy = get_location_occupancy();
         <div class="col-12">
             <div class="card dashboard-card">
                 <div class="card-header glass-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Inventory Summary Details</h5>
+                    <h5 class="card-title mb-0">Inventory Summary</h5>
                     <button class="btn btn-sm btn-outline-primary" onclick="exportSummary()">
                         <i class="feather-download me-1"></i>Export
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="summaryTable">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" style="width: 50px;">No</th>
-                                    <th>Item Details</th>
-                                    <th class="text-center">Begin</th>
-                                    <th class="text-center">IN</th>
-                                    <th class="text-center">OUT</th>
-                                    <th class="text-center">ADJ</th>
-                                    <th class="text-center">End / Pcs</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($summary as $index => $row): ?>
-                                    <tr>
-                                        <td class="text-center"><?= $index + 1 ?></td>
-                                        <td>
-                                            <div class="fw-bold text-dark"><?= htmlspecialchars($row['item_name']) ?></div>
-                                            <small class="text-muted"><?= htmlspecialchars($row['item_code']) ?> | <span
-                                                    class="badge bg-soft-info text-info"><?= htmlspecialchars($row['location_display']) ?></span></small>
-                                        </td>
-                                        <td class="text-center fw-semibold text-muted">
-                                            <?= number_format($row['begin_balance']) ?></td>
-                                        <td class="text-center">
-                                            <span
-                                                class="text-success fw-bold"><?= $row['total_in'] > 0 ? '+' . number_format($row['total_in']) : '0' ?></span>
-                                        </td>
-                                        <td class="text-center">
-                                            <span
-                                                class="text-danger fw-bold"><?= $row['total_out'] > 0 ? '-' . number_format($row['total_out']) : '0' ?></span>
-                                        </td>
-                                        <td class="text-center">
-                                            <?php if ($row['total_adj'] > 0): ?>
-                                                <span
-                                                    class="text-success fw-bold">+<?= number_format($row['total_adj']) ?></span>
-                                            <?php elseif ($row['total_adj'] < 0): ?>
-                                                <span class="text-danger fw-bold"><?= number_format($row['total_adj']) ?></span>
-                                            <?php else: ?>
-                                                <span class="fw-bold text-muted">0</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="text-center">
-                                            <h6 class="text-primary fw-bold mb-0"><?= number_format($row['end_balance']) ?>
-                                            </h6>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <ul class="nav nav-tabs" id="summaryTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="location-tab" data-bs-toggle="tab" data-bs-target="#location" type="button" role="tab" aria-controls="location" aria-selected="true">By Location</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="item-tab" data-bs-toggle="tab" data-bs-target="#item" type="button" role="tab" aria-controls="item" aria-selected="false">By Item</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3" id="summaryTabsContent">
+                        <div class="tab-pane fade show active" id="location" role="tabpanel" aria-labelledby="location-tab">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="locationTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" style="width: 50px;">No</th>
+                                            <th>Location</th>
+                                            <th class="text-center">Begin</th>
+                                            <th class="text-center">IN</th>
+                                            <th class="text-center">OUT</th>
+                                            <th class="text-center">ADJ</th>
+                                            <th class="text-center">End / Pcs</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($summary_location as $index => $row): ?>
+                                            <tr>
+                                                <td class="text-center"><?= $index + 1 ?></td>
+                                                <td>
+                                                    <div class="fw-bold text-dark"><?= htmlspecialchars($row['location_display']) ?></div>
+                                                </td>
+                                                <td class="text-center fw-semibold text-muted">
+                                                    <?= number_format($row['begin_balance']) ?></td>
+                                                <td class="text-center">
+                                                    <span
+                                                        class="text-success fw-bold"><?= $row['total_in'] > 0 ? '+' . number_format($row['total_in']) : '0' ?></span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span
+                                                        class="text-danger fw-bold"><?= $row['total_out'] > 0 ? '-' . number_format($row['total_out']) : '0' ?></span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <?php if ($row['total_adj'] > 0): ?>
+                                                        <span
+                                                            class="text-success fw-bold">+<?= number_format($row['total_adj']) ?></span>
+                                                    <?php elseif ($row['total_adj'] < 0): ?>
+                                                        <span class="text-danger fw-bold"><?= number_format($row['total_adj']) ?></span>
+                                                    <?php else: ?>
+                                                        <span class="fw-bold text-muted">0</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="text-center">
+                                                    <h6 class="text-primary fw-bold mb-0"><?= number_format($row['end_balance']) ?>
+                                                    </h6>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="item" role="tabpanel" aria-labelledby="item-tab">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="itemTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" style="width: 50px;">No</th>
+                                            <th>Item Details</th>
+                                            <th class="text-center">Begin</th>
+                                            <th class="text-center">IN</th>
+                                            <th class="text-center">OUT</th>
+                                            <th class="text-center">ADJ</th>
+                                            <th class="text-center">End / Pcs</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($summary_item as $index => $row): ?>
+                                            <tr>
+                                                <td class="text-center"><?= $index + 1 ?></td>
+                                                <td>
+                                                    <div class="fw-bold text-dark"><?= htmlspecialchars($row['item_name']) ?></div>
+                                                    <small class="text-muted"><?= htmlspecialchars($row['item_code']) ?> | <span
+                                                            class="badge bg-soft-info text-info"><?= htmlspecialchars($row['location_display']) ?></span></small>
+                                                </td>
+                                                <td class="text-center fw-semibold text-muted">
+                                                    <?= number_format($row['begin_balance']) ?></td>
+                                                <td class="text-center">
+                                                    <span
+                                                        class="text-success fw-bold"><?= $row['total_in'] > 0 ? '+' . number_format($row['total_in']) : '0' ?></span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span
+                                                        class="text-danger fw-bold"><?= $row['total_out'] > 0 ? '-' . number_format($row['total_out']) : '0' ?></span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <?php if ($row['total_adj'] > 0): ?>
+                                                        <span
+                                                            class="text-success fw-bold">+<?= number_format($row['total_adj']) ?></span>
+                                                    <?php elseif ($row['total_adj'] < 0): ?>
+                                                        <span class="text-danger fw-bold"><?= number_format($row['total_adj']) ?></span>
+                                                    <?php else: ?>
+                                                        <span class="fw-bold text-muted">0</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="text-center">
+                                                    <h6 class="text-primary fw-bold mb-0"><?= number_format($row['end_balance']) ?>
+                                                    </h6>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -391,10 +455,17 @@ $occupancy = get_location_occupancy();
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        let summaryTable;
+        let locationTable, itemTable;
 
         if (typeof $.fn.DataTable !== 'undefined') {
-            summaryTable = $('#summaryTable').DataTable({
+            locationTable = $('#locationTable').DataTable({
+                pageLength: 25,
+                order: [[1, 'asc']],
+                columnDefs: [
+                    { orderable: false, targets: [0] }
+                ]
+            });
+            itemTable = $('#itemTable').DataTable({
                 pageLength: 25,
                 order: [[1, 'asc']],
                 columnDefs: [
@@ -547,10 +618,10 @@ $occupancy = get_location_occupancy();
                         // Update Stats Grid
                         let t_stock = 0, t_in = 0, t_out = 0, t_adj = 0;
 
-                        // Update Table
-                        if (summaryTable) {
-                            summaryTable.clear();
-                            data.data.forEach((row, index) => {
+                        // Update Tables
+                        if (locationTable && data.location_data) {
+                            locationTable.clear();
+                            data.location_data.forEach((row, index) => {
                                 t_stock += parseInt(row.end_balance);
                                 t_in += parseInt(row.total_in);
                                 t_out += parseInt(row.total_out);
@@ -560,12 +631,9 @@ $occupancy = get_location_occupancy();
                                 if (row.total_adj > 0) adjDisplay = `<span class="text-success fw-bold">+${row.total_adj.toLocaleString()}</span>`;
                                 else if (row.total_adj < 0) adjDisplay = `<span class="text-danger fw-bold">${row.total_adj.toLocaleString()}</span>`;
 
-                                summaryTable.row.add([
+                                locationTable.row.add([
                                     `<div class="text-center">${index + 1}</div>`,
-                                    `<div>
-                                <div class="fw-bold text-dark">${row.item_name}</div>
-                                <small class="text-muted">${row.item_code} | <span class="badge bg-soft-info text-info">${row.location_display}</span></small>
-                            </div>`,
+                                    `<div class="fw-bold text-dark">${row.location_display}</div>`,
                                     `<div class="text-center fw-semibold text-muted">${row.begin_balance.toLocaleString()}</div>`,
                                     `<div class="text-center text-success fw-bold">${row.total_in > 0 ? '+' + row.total_in.toLocaleString() : '0'}</div>`,
                                     `<div class="text-center text-danger fw-bold">${row.total_out > 0 ? '-' + row.total_out.toLocaleString() : '0'}</div>`,
@@ -573,7 +641,30 @@ $occupancy = get_location_occupancy();
                                     `<div class="text-center"><h6 class="text-primary fw-bold mb-0">${row.end_balance.toLocaleString()}</h6></div>`
                                 ]);
                             });
-                            summaryTable.draw();
+                            locationTable.draw();
+                        }
+
+                        if (itemTable && data.item_data) {
+                            itemTable.clear();
+                            data.item_data.forEach((row, index) => {
+                                let adjDisplay = `<span class="fw-bold text-muted">0</span>`;
+                                if (row.total_adj > 0) adjDisplay = `<span class="text-success fw-bold">+${row.total_adj.toLocaleString()}</span>`;
+                                else if (row.total_adj < 0) adjDisplay = `<span class="text-danger fw-bold">${row.total_adj.toLocaleString()}</span>`;
+
+                                itemTable.row.add([
+                                    `<div class="text-center">${index + 1}</div>`,
+                                    `<div>
+                                        <div class="fw-bold text-dark">${row.item_name}</div>
+                                        <small class="text-muted">${row.item_code} | <span class="badge bg-soft-info text-info">${row.location_display}</span></small>
+                                    </div>`,
+                                    `<div class="text-center fw-semibold text-muted">${row.begin_balance.toLocaleString()}</div>`,
+                                    `<div class="text-center text-success fw-bold">${row.total_in > 0 ? '+' + row.total_in.toLocaleString() : '0'}</div>`,
+                                    `<div class="text-center text-danger fw-bold">${row.total_out > 0 ? '-' + row.total_out.toLocaleString() : '0'}</div>`,
+                                    `<div class="text-center">${adjDisplay}</div>`,
+                                    `<div class="text-center"><h6 class="text-primary fw-bold mb-0">${row.end_balance.toLocaleString()}</h6></div>`
+                                ]);
+                            });
+                            itemTable.draw();
                         }
 
                         // Update Metric Labels
