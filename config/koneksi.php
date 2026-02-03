@@ -3,7 +3,22 @@
 $hostname = gethostname();
 // echo $hostname;
 // die;
-$serverName = "DESKTOP-1V8I9K6\SQLEXPRESS";
+switch ($hostname) {
+    case "DESKTOP-1V8I9K6":
+        // Setting untuk Laptop 1
+        $serverName = "DESKTOP-1V8I9K6\SQLEXPRESS";
+        break;
+
+    case "DESKTOP-LRQ27LE":
+        // Setting untuk Laptop 2
+        $serverName = "DESKTOP-LRQ27LE";
+        break;
+
+    default:
+        // Setting kalau diupload ke hosting atau laptop lain yang belum terdaftar
+        $serverName = "localhost";
+        break;
+}
 
 $database = "inventory";
 $username = "sa";
