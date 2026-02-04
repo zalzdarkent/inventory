@@ -1,5 +1,5 @@
 RewriteEngine On
-RewriteBase /aslab/
+# RewriteBase /inventory/
 
 # 1. Hilangkan .php dari URL secara eksternal (Browser redirect)
 # Jika user akses login.php, arahkan ke /login
@@ -7,7 +7,7 @@ RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s([^.]+)\.php [NC]
 RewriteRule ^ %1 [R=301,L]
 
 # 2. Tangani parameter ?page= (Aturan lama kamu)
-RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /aslab/index\.php\?page=([^\ ]+)\ HTTP/
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /index\.php\?page=([^\ ]+)\ HTTP/
 RewriteRule ^index\.php$ %1? [L,R=301]
 
 # 3. Cek file tanpa ekstensi secara internal

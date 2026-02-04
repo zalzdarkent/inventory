@@ -10,8 +10,8 @@ $history = get_adjustment_history();
             <h5 class="m-b-10">Adjustment History (STO)</h5>
         </div>
         <ul class="breadcrumb">
-            <li class="breadcrumb-item"><a href="index.php">Home</a></li>
-            <li class="breadcrumb-item"><a href="index.php?page=inventory_log">Inventory</a></li>
+            <li class="breadcrumb-item"><a href="index">Home</a></li>
+            <li class="breadcrumb-item"><a href="inventory_log">Inventory</a></li>
             <li class="breadcrumb-item">Adjustment History</li>
         </ul>
     </div>

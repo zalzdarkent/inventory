@@ -99,7 +99,7 @@ $locations = get_all_locations_inv();
                         <button class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#inputDataModal">
                             <i class="feather-plus me-1"></i>Input Data
                         </button>
-                        <a href="index.php?page=adjustment_history" class="btn btn-sm btn-light-brand me-1">
+                        <a href="adjustment_history" class="btn btn-sm btn-light-brand me-1">
                             <i class="feather-clock me-1"></i>History Adjustment
                         </a>
                         <button class="btn btn-sm btn-light-brand" onclick="refreshTable()">
@@ -164,7 +164,7 @@ $locations = get_all_locations_inv();
                                                    title="Adjustment (STO)">
                                                     <i class="feather feather-check-square"></i>
                                                 </a>
-                                                <a href="index.php?page=in_out_history&item_id=<?= $item['id'] ?>" 
+                                                <a href="in_out_history&item_id=<?= $item['id'] ?>" 
                                                    class="avatar-text avatar-md" 
                                                    title="View History">
                                                     <i class="feather feather-clock"></i>

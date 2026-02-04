@@ -14,7 +14,7 @@ if ($id > 0) {
         $pageTitle = 'Edit Item';
         $itemCode = $item['item_code'];
     } else {
-        header('Location: index.php?page=log_data');
+        header('Location: log_data');
         exit;
     }
 }
@@ -26,8 +26,8 @@ if ($id > 0) {
             <h5 class="m-b-10"><?= $pageTitle ?></h5>
         </div>
         <ul class="breadcrumb">
-            <li class="breadcrumb-item"><a href="index.php">Home</a></li>
-            <li class="breadcrumb-item"><a href="index.php?page=log_data">Log Data</a></li>
+            <li class="breadcrumb-item"><a href="index">Home</a></li>
+            <li class="breadcrumb-item"><a href="log_data">Log Data</a></li>
             <li class="breadcrumb-item"><?= $pageTitle ?></li>
         </ul>
     </div>
@@ -92,7 +92,7 @@ if ($id > 0) {
                                     <button type="submit" class="btn btn-primary w-75">
                                         <i class="feather-save me-2"></i>Save
                                     </button>
-                                    <a href="index.php?page=log_data" class="btn btn-secondary w-75 mt-2">
+                                    <a href="log_data" class="btn btn-secondary w-75 mt-2">
                                         <i class="feather-x me-2"></i>Cancel
                                     </a>
                                 </div>
@@ -175,11 +175,11 @@ document.getElementById('itemForm').addEventListener('submit', function(e) {
                     timer: 1500,
                     showConfirmButton: false
                 }).then(() => {
-                    window.location.href = 'index.php?page=log_data';
+                    window.location.href = 'log_data';
                 });
             } else {
                 alert(data.message);
-                window.location.href = 'index.php?page=log_data';
+                window.location.href = 'log_data';
             }
         } else {
             if (typeof Swal !== 'undefined') {

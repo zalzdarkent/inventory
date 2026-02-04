@@ -4,13 +4,13 @@ require_once __DIR__ . '/Action/ac_inventory_log.php';
 $item_id = isset($_GET['item_id']) ? (int)$_GET['item_id'] : 0;
 
 if ($item_id <= 0) {
-    header('Location: index.php?page=in_out');
+    header('Location: in_out');
     exit;
 }
 
 $item = get_item_by_id($item_id);
 if (!$item) {
-    header('Location: index.php?page=in_out');
+    header('Location: in_out');
     exit;
 }
 
@@ -24,15 +24,15 @@ $current_stock = get_item_stock($item_id);
             <h5 class="m-b-10">Transaction History</h5>
         </div>
         <ul class="breadcrumb">
-            <li class="breadcrumb-item"><a href="index.php">Home</a></li>
-            <li class="breadcrumb-item"><a href="index.php?page=in_out">Inventory</a></li>
+            <li class="breadcrumb-item"><a href="index">Home</a></li>
+            <li class="breadcrumb-item"><a href="in_out">Inventory</a></li>
             <li class="breadcrumb-item">History</li>
         </ul>
     </div>
     <div class="page-header-right ms-auto">
         <div class="page-header-right-items">
             <div class="d-flex align-items-center gap-2 page-header-right-items-wrapper">
-                <a href="index.php?page=in_out" class="btn btn-light-brand">
+                <a href="in_out" class="btn btn-light-brand">
                     <i class="feather-arrow-left me-2"></i>Back
                 </a>
             </div>
@@ -104,7 +104,6 @@ $current_stock = get_item_stock($item_id);
                                     $running_stock = 0;
                                     $reversed_logs = array_reverse($logs);
                                     foreach ($reversed_logs as $index => $log): 
-                                        // Calculate running stock using qty_mutation (signed value)
                                         $running_stock += $log['qty_mutation'];
                                     endforeach;
                                     

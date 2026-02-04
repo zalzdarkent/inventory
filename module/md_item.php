@@ -23,7 +23,7 @@ $items = item_index();
                 </a>
             </div>
             <div class="d-flex align-items-center gap-2 page-header-right-items-wrapper">
-                <a href="index.php?page=log_data_create" class="btn btn-primary">
+                <a href="log_data_create" class="btn btn-primary">
                     <i class="feather-plus me-2"></i>
                     <span>New Item</span>
                 </a>
@@ -94,7 +94,7 @@ $items = item_index();
                                             </td>
                                             <td>
                                                 <div class="hstack gap-2 justify-content-end">
-                                                    <a href="index.php?page=log_data_create&id=<?= $item['id'] ?>" 
+                                                    <a href="log_data_create&id=<?= $item['id'] ?>" 
                                                        class="avatar-text avatar-md" title="Edit">
                                                         <i class="feather feather-edit-3"></i>
                                                     </a>

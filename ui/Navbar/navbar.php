@@ -8,7 +8,7 @@ $menus = get_navbar_menu();
 <nav class="nxl-navigation">
     <div class="navbar-wrapper">
         <div class="m-header">
-            <a href="index.html" class="b-brand">
+            <a href="index" class="b-brand">
                 <img src="assets/images/logo-full.png" alt="" class="logo logo-lg" />
                 <img src="assets/images/logo-abbr.png" alt="" class="logo logo-sm" />
             </a>
