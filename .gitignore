@@ -1,1 +1,5 @@
-./config/test_sqlsrv.php
+/config/test_sqlsrv.php
+/assets/uploads/
+/.env
+.htaccess
+/vendor/

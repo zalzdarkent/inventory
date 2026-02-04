@@ -1,28 +1,27 @@
 <?php
 
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
 $hostname = gethostname();
 // echo $hostname;
 // die;
 switch ($hostname) {
-    case "DESKTOP-1V8I9K6":
-        // Setting untuk Laptop 1
-        $serverName = "DESKTOP-1V8I9K6\SQLEXPRESS";
+    case $_ENV['SERVERNAME1']:
+        $serverName = $_ENV['SERVERNAME1'] . '\SQLEXPRESS';
         break;
 
-    case "DESKTOP-LRQ27LE":
-        // Setting untuk Laptop 2
-        $serverName = "DESKTOP-LRQ27LE";
+    case $_ENV['SERVERNAME2']:
+        $serverName = $_ENV['SERVERNAME2'];
         break;
 
     default:
-        // Setting kalau diupload ke hosting atau laptop lain yang belum terdaftar
-        $serverName = "localhost";
+        $serverName = $_ENV['SERVERNAME3'];
         break;
 }
 
-$database = "inventory";
-$username = "sa";
-$password = "Saaccountalif123";
+$database = $_ENV['DATABASE'];
+$username = $_ENV['USERNAME'];
+$password = $_ENV['PASSWORD'];
 
 $connectionInfo = array(
     "Database" => $database,

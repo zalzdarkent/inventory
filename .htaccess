@@ -1,22 +1,16 @@
 RewriteEngine On
 # RewriteBase /inventory/
 
-# 1. Hilangkan .php dari URL secara eksternal (Browser redirect)
-# Jika user akses login.php, arahkan ke /login
 RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s([^.]+)\.php [NC]
 RewriteRule ^ %1 [R=301,L]
 
-# 2. Tangani parameter ?page= (Aturan lama kamu)
 RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /index\.php\?page=([^\ ]+)\ HTTP/
 RewriteRule ^index\.php$ %1? [L,R=301]
 
-# 3. Cek file tanpa ekstensi secara internal
-# Jika user akses /login, server akan membaca login.php di balik layar
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^([^/]+)$ $1.php [L]
 
-# 4. Fallback untuk index.php?page= (Jika file .php tidak ditemukan)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([^/]+)$ index.php?page=$1 [L,QSA]
