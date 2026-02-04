@@ -10,7 +10,7 @@
                 <form id="inputDataForm">
                     <div class="mb-3">
                         <label class="form-label">Location <span class="text-danger">*</span></label>
-                        <select class="form-select" name="location_id" id="inputLocation" required>
+                        <select class="form-control" name="location_id" id="inputLocation" data-select2-selector="default" required style="width: 100%;">
                             <option value="">Select Location</option>
                             <?php foreach ($locations as $loc): ?>
                                 <option value="<?= $loc['id'] ?>">
@@ -22,7 +22,7 @@
 
                     <div class="mb-3">
                         <label class="form-label">Item <span class="text-danger">*</span></label>
-                        <select class="form-select" name="item_id" id="inputItem" required>
+                        <select class="form-control" name="item_id" id="inputItem" data-select2-selector="status" required style="width: 100%;">
                             <option value="">Select Item</option>
                             <?php 
                             $active_items = get_active_items();
@@ -84,23 +84,37 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('inputDataModal');
-    if (modal) {
-        document.body.appendChild(modal);
+    const modalElem = document.getElementById('inputDataModal');
+    if (modalElem) {
+        document.body.appendChild(modalElem);
+        
+        // Initialize Select2 when modal is shown
+        modalElem.addEventListener('shown.bs.modal', function () {
+            if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+                $('#inputLocation').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#inputDataModal'),
+                    placeholder: 'Select Location',
+                    allowClear: true,
+                    width: '100%',
+                    templateResult: typeof bgformat !== 'undefined' ? bgformat : null,
+                    templateSelection: typeof bgformat !== 'undefined' ? bgformat : null,
+                    escapeMarkup: function(m) { return m; }
+                });
+                
+                $('#inputItem').select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('#inputDataModal'),
+                    placeholder: 'Select Item',
+                    allowClear: true,
+                    width: '100%',
+                    templateResult: typeof bgformat !== 'undefined' ? bgformat : null,
+                    templateSelection: typeof bgformat !== 'undefined' ? bgformat : null,
+                    escapeMarkup: function(m) { return m; }
+                });
+            }
+        });
     }
-});
-
-// Get active items (for dropdowns in forms)
-let allItems = [];
-async function loadAllItems() {
-    // Items already loaded via PHP, no need for async fetch
-    console.log('Items pre-loaded via server-side PHP');
-}
-
-// Load items when location is selected (optional - for future filtering by location)
-document.getElementById('inputLocation')?.addEventListener('change', function() {
-    // Items are already loaded from server, no filtering needed for now
-    // In future, can add filtering logic here if needed
 });
 
 // Submit Input Data Form
@@ -112,17 +126,17 @@ function submitInputData() {
     const notes = document.getElementById('inputNotes').value;
 
     if (!locationId || !itemId || !qty) {
-        alert('Please fill in all required fields');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'warning', title: 'Data Missing', text: 'Please fill in all required fields' });
+        } else {
+            alert('Please fill in all required fields');
+        }
         return;
     }
 
-    const formData = new FormData();
+    const formData = new FormData(form);
     formData.append('action', 'transaction');
     formData.append('transaction_type', 'IN');
-    formData.append('location_id', locationId);
-    formData.append('item_id', itemId);
-    formData.append('qty', qty);
-    formData.append('notes', notes);
 
     if (typeof Swal !== 'undefined') {
         Swal.fire({
@@ -132,7 +146,7 @@ function submitInputData() {
         });
     }
 
-    fetch('module/Action/ac_inventory_log.php', {
+    fetch('module/Action/ac_inventory_log', {
         method: 'POST',
         body: formData
     })
@@ -147,12 +161,6 @@ function submitInputData() {
                     timer: 1500,
                     showConfirmButton: false
                 }).then(() => {
-                    // Reset form
-                    form.reset();
-                    // Close modal
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('inputDataModal'));
-                    modal.hide();
-                    // Reload page
                     location.reload();
                 });
             } else {
@@ -184,9 +192,4 @@ function submitInputData() {
         }
     });
 }
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', async function() {
-    await loadAllItems();
-});
 </script>

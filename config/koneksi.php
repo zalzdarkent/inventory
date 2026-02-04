@@ -1,28 +1,41 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
-$dotenv->load();
+// Load .env manually to avoid $_SERVER conflicts with Windows environment variables
+$envFile = __DIR__ . '/../.env';
+$env = [];
+
+if (file_exists($envFile)) {
+    $lines = file($envFile);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line && strpos($line, '=') !== false && $line[0] !== '#') {
+            list($key, $value) = explode('=', $line, 2);
+            $env[trim($key)] = trim($value);
+        }
+    }
+}
+
 $hostname = gethostname();
-// echo $hostname;
-// die;
+
 switch ($hostname) {
-    case $_ENV['SERVERNAME1']:
-        $serverName = $_ENV['SERVERNAME1'] . '\SQLEXPRESS';
+    case $env['SERVERNAME1'] ?? null:
+        $serverName = $env['SERVERNAME1'] . '\SQLEXPRESS';
         break;
 
-    case $_ENV['SERVERNAME2']:
-        $serverName = $_ENV['SERVERNAME2'];
+    case $env['SERVERNAME2'] ?? null:
+        $serverName = $env['SERVERNAME2'];
         break;
 
     default:
-        $serverName = $_ENV['SERVERNAME3'];
+        $serverName = $env['SERVERNAME3'] ?? 'localhost';
         break;
 }
 
-$database = $_ENV['DATABASE'];
-$username = $_ENV['USERNAME'];
-$password = $_ENV['PASSWORD'];
+// Database credentials from parsed .env
+$database = $env['DATABASE'] ?? 'inventory';
+$username = $env['USERNAME'] ?? 'sa';
+$password = $env['PASSWORD'] ?? '';
 
 $connectionInfo = array(
     "Database" => $database,

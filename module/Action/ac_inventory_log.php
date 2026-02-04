@@ -13,8 +13,9 @@ function inventory_logs($item_id = null) {
     return get_inventory_logs($item_id);
 }
 
-function inventory_transaction($item_id, $transaction_type, $qty, $notes, $location_id = null, $is_transfer = false, $target_location_id = null, $user_id = null) {
-    if (empty($item_id) || !is_numeric($item_id)) {
+function inventory_transaction($item_id, $transaction_type, $qty, $notes, $location_id = null, $is_transfer = false, $target_location_id = null, $user_id = null, $junction_id = null) {
+    // Support both junction_id (new) and item_id+location_id (legacy)
+    if ($junction_id === null && (empty($item_id) || !is_numeric($item_id))) {
         return [
             'status' => 'error',
             'message' => 'Invalid item ID'
@@ -42,7 +43,23 @@ function inventory_transaction($item_id, $transaction_type, $qty, $notes, $locat
         ];
     }
 
-    if ($is_transfer && $target_location_id) {        
+    if ($is_transfer && $target_location_id) {
+        // Get source junction_id if not provided
+        $source_junction_id = $junction_id;
+        if ($source_junction_id === null && $item_id && $location_id) {
+            $source_junction_id = get_junction_id($item_id, $location_id);
+        }
+        
+        // Get target junction_id
+        $target_junction_id = get_junction_id($item_id, $target_location_id);
+        
+        if (!$source_junction_id || !$target_junction_id) {
+            return [
+                'status' => 'error',
+                'message' => 'Invalid location or item assignment'
+            ];
+        }
+        
         $current_stock_source = get_item_stock($item_id, $location_id);
         if ($current_stock_source < $qty) {
             return [
@@ -59,7 +76,7 @@ function inventory_transaction($item_id, $transaction_type, $qty, $notes, $locat
 
         $out_notes = $notes . " (Transfer to: $target_name)";
         // qty_mutation is negative for OUT, qty (absolute) is positive
-        if (!insert_inventory_log($item_id, 'MOVE', -$qty, $out_notes, $location_id, $user_id, $qty)) {
+        if (!insert_inventory_log($item_id, 'MOVE', -$qty, $out_notes, $location_id, $user_id, $qty, $source_junction_id)) {
              return [
                 'status' => 'error',
                 'message' => 'Failed to record transfer (Source deduction)'
@@ -68,7 +85,7 @@ function inventory_transaction($item_id, $transaction_type, $qty, $notes, $locat
 
         $in_notes = $notes . " (Transfer from: $source_name)";
         // qty_mutation is positive for IN, qty (absolute) is positive
-        if (!insert_inventory_log($item_id, 'MOVE', $qty, $in_notes, $target_location_id, $user_id, $qty)) {
+        if (!insert_inventory_log($item_id, 'MOVE', $qty, $in_notes, $target_location_id, $user_id, $qty, $target_junction_id)) {
              return [
                 'status' => 'warning',
                 'message' => 'Transfer partially completed. Deducted from source but failed to add to target.'
@@ -92,8 +109,8 @@ function inventory_transaction($item_id, $transaction_type, $qty, $notes, $locat
     
     if ($transaction_type !== 'ADJUST') {
         // For IN, OUT, MOVE: qty_mutation is signed, qty (absolute) is always positive
-        if (insert_inventory_log($item_id, $transaction_type, $qty_mutation, $notes, $location_id, $user_id, $qty)) {
-            $new_stock = get_item_stock($item_id); 
+        if (insert_inventory_log($item_id, $transaction_type, $qty_mutation, $notes, $location_id, $user_id, $qty, $junction_id)) {
+            $new_stock = $junction_id ? 0 : get_item_stock($item_id);
             return [
                 'status' => 'success',
                 'message' => 'Transaction recorded successfully',
@@ -136,6 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $physical_count = $_POST['qty'] ?? 0; 
             $notes = trim($_POST['notes'] ?? '');
             $location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
+            $junction_id = !empty($_POST['junction_id']) ? $_POST['junction_id'] : null;
 
             $previous_stock = get_item_stock($item_id, $location_id);
             
@@ -145,8 +163,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $user_id = $_SESSION['user_id'] ?? null;
             // qty_mutation is delta (signed), qty is absolute delta
-            if (insert_inventory_log($item_id, 'ADJUST', $delta, $notes, $location_id, $user_id, $abs_delta)) {
-                if (insert_adjustment($item_id, $location_id, $previous_stock, $abs_delta, $adj_type, $physical_count, $notes, $user_id)) {
+            if (insert_inventory_log($item_id, 'ADJUST', $delta, $notes, $location_id, $user_id, $abs_delta, $junction_id)) {
+                if (insert_adjustment($item_id, $location_id, $previous_stock, $abs_delta, $adj_type, $physical_count, $notes, $user_id, $junction_id)) {
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Adjustment recorded successfully. Delta: ' . ($delta > 0 ? '+' : '') . $delta,
@@ -203,6 +221,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             echo json_encode([
                 'status' => 'success',
                 'data' => $logs
+            ]);
+            exit;
+            
+        case 'get_active_items':
+            $items = get_active_items();
+            echo json_encode([
+                'status' => 'success',
+                'data' => $items
             ]);
             exit;
     }

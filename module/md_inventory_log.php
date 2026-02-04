@@ -96,8 +96,8 @@ $locations = get_all_locations_inv();
                 <div class="card-header">
                     <h5 class="card-title">Current Stock</h5>
                     <div class="card-header-action">
-                        <button class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#inputDataModal">
-                            <i class="feather-plus me-1"></i>Input Data
+                        <button class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#adjustmentModal">
+                            <i class="feather-plus me-1"></i>Adjustment
                         </button>
                         <a href="adjustment_history" class="btn btn-sm btn-light-brand me-1">
                             <i class="feather-clock me-1"></i>History Adjustment
@@ -287,4 +287,3 @@ function refreshTable() {
     location.reload();
 }
 </script>
-<?php include __DIR__ . '/modal/modal_input_data.php'; ?>

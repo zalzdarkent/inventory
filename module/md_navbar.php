@@ -16,14 +16,14 @@ function get_navbar_menu() {
             'url' => 'javascript:void(0);',
             'children' => [
                 [
-                    'key' => 'location',
-                    'title' => 'Location',
-                    'url' => 'location'
-                ],
-                [
                     'key' => 'log_data',
                     'title' => 'Log Data',
                     'url' => 'log_data'
+                ],
+                [
+                    'key' => 'location',
+                    'title' => 'Location',
+                    'url' => 'location'
                 ],
                 [
                     'key' => 'in_out',

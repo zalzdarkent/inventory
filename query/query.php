@@ -33,7 +33,9 @@ function get_all_locations_inv() {
 
 function get_location_by_id($id) {
     global $koneksi;
-    $sql = "SELECT id, location, is_active FROM item_location WHERE id = ?";
+    $sql = "SELECT id, location, is_active,
+            (SELECT STRING_AGG(CAST(item_id AS VARCHAR), ',') FROM item_table_locations WHERE location_id = item_location.id) as item_ids
+            FROM item_location WHERE id = ?";
     $params = array($id);
     $stmt = sqlsrv_query($koneksi, $sql, $params);
     if ($stmt === false) {
@@ -62,6 +64,102 @@ function toggle_location_status($id) {
     global $koneksi;
     $sql = "UPDATE item_location SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = GETDATE() WHERE id = ?";
     $params = array($id);
+    $stmt = sqlsrv_query($koneksi, $sql, $params);
+    return $stmt !== false;
+}
+
+// ==================== ITEM TABLE LOCATIONS (JUNCTION) ====================
+
+function insert_location_with_items($location_name, $item_ids = []) {
+    global $koneksi;
+    
+    // Insert location
+    $sql_location = "INSERT INTO item_location (location, is_active, created_at) VALUES (?, 1, GETDATE())";
+    $params_location = array($location_name);
+    $stmt_location = sqlsrv_query($koneksi, $sql_location, $params_location);
+    
+    if ($stmt_location === false) {
+        return false;
+    }
+    
+    // Get the location ID that was just created
+    $sql_id = "SELECT TOP 1 id FROM item_location ORDER BY id DESC";
+    $stmt_id = sqlsrv_query($koneksi, $sql_id);
+    $row_id = sqlsrv_fetch_array($stmt_id, SQLSRV_FETCH_ASSOC);
+    $location_id = $row_id['id'];
+    
+    // Insert items to junction table
+    if (!empty($item_ids)) {
+        foreach ($item_ids as $item_id) {
+            $sql_junction = "INSERT INTO item_table_locations (location_id, item_id, created_at) VALUES (?, ?, GETDATE())";
+            $params_junction = array($location_id, (int)$item_id);
+            $stmt_junction = sqlsrv_query($koneksi, $sql_junction, $params_junction);
+            
+            if ($stmt_junction === false) {
+                return false;
+            }
+        }
+    }
+    
+    return $location_id;
+}
+
+function get_location_items($location_id) {
+    global $koneksi;
+    $sql = "SELECT 
+                itl.id as junction_id,
+                itl.location_id,
+                itl.item_id,
+                i.item_code,
+                i.name as item_name,
+                i.picture,
+                ISNULL(SUM(il.qty_mutation), 0) as current_stock
+            FROM item_table_locations itl
+            INNER JOIN item_table i ON itl.item_id = i.id
+            LEFT JOIN inventory_log il ON il.item_id = i.id 
+                AND il.location_id = itl.location_id
+            WHERE itl.location_id = ? AND i.is_active = 1
+            GROUP BY itl.id, itl.location_id, itl.item_id, i.id, i.item_code, i.name, i.picture
+            ORDER BY i.name ASC";
+    
+    $params = array($location_id);
+    $stmt = sqlsrv_query($koneksi, $sql, $params);
+    
+    if ($stmt === false) {
+        return [];
+    }
+    
+    $items = [];
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        $items[] = $row;
+    }
+    return $items;
+}
+
+function add_items_to_location($location_id, $item_ids) {
+    global $koneksi;
+    
+    if (empty($item_ids)) {
+        return true;
+    }
+    
+    foreach ($item_ids as $item_id) {
+        $sql = "INSERT INTO item_table_locations (location_id, item_id, created_at) VALUES (?, ?, GETDATE())";
+        $params = array($location_id, (int)$item_id);
+        $stmt = sqlsrv_query($koneksi, $sql, $params);
+        
+        if ($stmt === false) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+function remove_item_from_location($junction_id) {
+    global $koneksi;
+    $sql = "DELETE FROM item_table_locations WHERE id = ?";
+    $params = array($junction_id);
     $stmt = sqlsrv_query($koneksi, $sql, $params);
     return $stmt !== false;
 }
@@ -218,14 +316,16 @@ function get_items_with_stock() {
                 i.item_code, 
                 i.name, 
                 i.picture,
-                il.location_id,
+                itl.id as junction_id,
+                itl.location_id,
                 l.location as location_name,
                 ISNULL(SUM(il.qty_mutation), 0) as current_stock
-            FROM inventory_log il
-            INNER JOIN item_table i ON i.id = il.item_id
-            LEFT JOIN item_location l ON il.location_id = l.id
+            FROM item_table_locations itl
+            INNER JOIN item_table i ON i.id = itl.item_id
+            INNER JOIN item_location l ON itl.location_id = l.id
+            LEFT JOIN inventory_log il ON il.item_id = i.id AND il.location_id = itl.location_id
             WHERE i.is_active = 1
-            GROUP BY i.id, i.item_code, i.name, i.picture, il.location_id, l.location
+            GROUP BY i.id, i.item_code, i.name, i.picture, itl.id, itl.location_id, l.location
             ORDER BY i.item_code ASC";
     
     $stmt = sqlsrv_query($koneksi, $sql);
@@ -285,18 +385,41 @@ function get_inventory_logs($item_id = null, $limit = 50) {
     return $logs;
 }
 
-function insert_inventory_log($item_id, $transaction_type, $qty_mutation, $notes, $location_id = null, $user_id = null, $qty = null) {
+function insert_inventory_log($item_id, $transaction_type, $qty_mutation, $notes, $location_id = null, $user_id = null, $qty = null, $junction_id = null) {
     global $koneksi;
     // If qty (absolute value) not provided, calculate it from qty_mutation
     if ($qty === null) {
         $qty = abs($qty_mutation);
     }
-    $sql = "INSERT INTO inventory_log (item_id, transaction_type, qty_mutation, qty, notes, location_id, user_id, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())";
-    $params = array($item_id, $transaction_type, $qty_mutation, $qty, $notes, $location_id, $user_id);
+    
+    // If junction_id is provided, use it; otherwise use item_id and location_id
+    if ($junction_id !== null) {
+        $sql = "INSERT INTO inventory_log (item_table_location_id, transaction_type, qty_mutation, qty, notes, user_id, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, GETDATE())";
+        $params = array($junction_id, $transaction_type, $qty_mutation, $qty, $notes, $user_id);
+    } else {
+        $sql = "INSERT INTO inventory_log (item_id, transaction_type, qty_mutation, qty, notes, location_id, user_id, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE())";
+        $params = array($item_id, $transaction_type, $qty_mutation, $qty, $notes, $location_id, $user_id);
+    }
+    
     $stmt = sqlsrv_query($koneksi, $sql, $params);
     
     return $stmt !== false;
+}
+
+function get_junction_id($item_id, $location_id) {
+    global $koneksi;
+    $sql = "SELECT id FROM item_table_locations WHERE item_id = ? AND location_id = ?";
+    $params = array($item_id, $location_id);
+    $stmt = sqlsrv_query($koneksi, $sql, $params);
+    
+    if ($stmt === false) {
+        return null;
+    }
+    
+    $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+    return $row ? $row['id'] : null;
 }
 
 function get_item_stock($item_id, $location_id = null) {
@@ -324,11 +447,20 @@ function get_item_stock($item_id, $location_id = null) {
     return $row ? (int)$row['current_stock'] : 0;
 }
 
-function insert_adjustment($item_id, $location_id, $previous_stock, $adjusted_qty, $adj_type, $new_stock, $notes, $user_id = null) {
+function insert_adjustment($item_id, $location_id, $previous_stock, $adjusted_qty, $adj_type, $new_stock, $notes, $user_id = null, $junction_id = null) {
     global $koneksi;
-    $sql = "INSERT INTO inventory_adjustment (item_id, location_id, previous_stock, adjusted_qty, adj_type, new_stock, notes, user_id, status, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', GETDATE())";
-    $params = array($item_id, $location_id, $previous_stock, $adjusted_qty, $adj_type, $new_stock, $notes, $user_id);
+    
+    // If junction_id is provided, use it; otherwise use item_id and location_id
+    if ($junction_id !== null) {
+        $sql = "INSERT INTO inventory_adjustment (item_table_location_id, previous_stock, adjusted_qty, adj_type, new_stock, notes, user_id, status, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', GETDATE())";
+        $params = array($junction_id, $previous_stock, $adjusted_qty, $adj_type, $new_stock, $notes, $user_id);
+    } else {
+        $sql = "INSERT INTO inventory_adjustment (item_id, location_id, previous_stock, adjusted_qty, adj_type, new_stock, notes, user_id, status, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', GETDATE())";
+        $params = array($item_id, $location_id, $previous_stock, $adjusted_qty, $adj_type, $new_stock, $notes, $user_id);
+    }
+    
     $stmt = sqlsrv_query($koneksi, $sql, $params);
     return $stmt !== false;
 }
