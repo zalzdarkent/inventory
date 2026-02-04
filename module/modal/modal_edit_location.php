@@ -25,24 +25,31 @@
 </div>
 
 <style>
-    /* Hapus filter blur yang merusak tampilan modal */
     #editLocationModal {
         z-index: 1060 !important;
+        backdrop-filter: none !important;
+        filter: none !important;
     }
 
-    /* Pastikan backdrop tidak menutupi modal itu sendiri */
     .modal-backdrop {
         z-index: 1050 !important;
     }
 </style>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('editLocationModal');
+        if (modal) {
+            document.body.appendChild(modal);
+        }
+    });
+
     function openeditLocationModal(id) {
         const formData = new URLSearchParams();
         formData.append('action', 'get');
         formData.append('id', id);
 
-        fetch('module/Action/ac_location.php', {
+        fetch('module/Action/ac_location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData.toString()
@@ -78,7 +85,7 @@
         formData.append('id', id);
         formData.append('location_name', locationName);
 
-        fetch('module/Action/ac_location.php', {
+        fetch('module/Action/ac_location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData.toString()

@@ -160,7 +160,7 @@ document.getElementById('itemForm').addEventListener('submit', function(e) {
         });
     }
     
-    fetch('module/Action/ac_item.php', {
+    fetch('module/Action/ac_item', {
         method: 'POST',
         body: formData
     })

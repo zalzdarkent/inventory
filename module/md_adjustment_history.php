@@ -11,7 +11,7 @@ $history = get_adjustment_history();
         </div>
         <ul class="breadcrumb">
             <li class="breadcrumb-item"><a href="index">Home</a></li>
-            <li class="breadcrumb-item"><a href="inventory_log">Inventory</a></li>
+            <li class="breadcrumb-item"><a href="in_out">Inventory</a></li>
             <li class="breadcrumb-item">Adjustment History</li>
         </ul>
     </div>

@@ -105,7 +105,7 @@ $locations = location_index();
             const formData = new URLSearchParams();
             formData.append('action', 'toggle_status');
             formData.append('id', id);
-            fetch('module/Action/ac_location.php', {
+            fetch('module/Action/ac_location', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData.toString()
@@ -139,7 +139,7 @@ $locations = location_index();
             formData.append('action', 'toggle_status');
             formData.append('id', id);
 
-            fetch('module/Action/ac_location.php', {
+            fetch('module/Action/ac_location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

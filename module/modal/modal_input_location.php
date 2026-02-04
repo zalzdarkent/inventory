@@ -69,7 +69,7 @@
             });
         }
 
-        fetch('module/Action/ac_location.php', {
+        fetch('module/Action/ac_location', {
             method: 'POST',
             body: formData
         })

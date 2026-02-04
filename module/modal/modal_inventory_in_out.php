@@ -117,7 +117,7 @@ document.getElementById('transactionForm').addEventListener('submit', function(e
         });
     }
     
-    fetch('module/Action/ac_inventory_log.php', {
+    fetch('module/Action/ac_inventory_log', {
         method: 'POST',
         body: formData
     })
