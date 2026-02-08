@@ -62,6 +62,14 @@ if ($id > 0) {
                                               placeholder="Enter item description"
                                               rows="3"><?= $item ? htmlspecialchars($item['description'] ?? '') : '' ?></textarea>
                                 </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label">Minimum Stock <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="stock_min" id="stockMin" 
+                                           placeholder="Enter minimum stock threshold" 
+                                           value="<?= $item ? htmlspecialchars($item['stock_min'] ?? 0) : 0 ?>" required min="0">
+                                    <small class="text-muted">Used for urgent reorder alerts.</small>
+                                </div>
                             </div>
                             
                             <!-- Image Upload & Preview -->

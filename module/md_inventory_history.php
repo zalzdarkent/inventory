@@ -175,7 +175,7 @@ $current_stock = get_item_stock($item_id);
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof $.fn.DataTable !== 'undefined') {
         $('#historyTable').DataTable({
-            pageLength: 25,
+            pageLength: 10,
             order: [[1, 'desc']],
             columnDefs: [
                 { orderable: false, targets: [5] }

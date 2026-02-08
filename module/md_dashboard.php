@@ -1,7 +1,9 @@
 <?php
 require_once __DIR__ . '/Action/ac_dashboard.php';
-$start_date = date('Y-m-01');
-$end_date = date('Y-m-t');
+// Periodik per hari - gunakan date picker untuk fleksibilitas
+// Periodik per bulan sebagai default untuk trend yang lebih baik
+$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
+$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-t');
 $summary_location = get_location_summary($start_date, $end_date);
 $summary_item = get_inventory_summary($start_date, $end_date);
 $total_stock = 0;
@@ -17,6 +19,8 @@ foreach ($summary_location as $row) {
 $chartData = get_daily_movement_stats($start_date, $end_date);
 $insights = get_inventory_insights($start_date, $end_date);
 $occupancy = get_location_occupancy();
+$low_stock = get_low_stock_items();
+$recent_activities = get_recent_activities();
 ?>
 
 <style>
@@ -124,6 +128,57 @@ $occupancy = get_location_occupancy();
         background: rgba(255, 255, 255, 0.8) !important;
         backdrop-filter: blur(10px);
         border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .activity-feed {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        padding: 12px;
+        border-left: 3px solid #e9ecef;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+        border-radius: 0 6px 6px 0;
+        position: relative;
+    }
+
+    .activity-item::before {
+        content: '';
+        position: absolute;
+        left: -6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 10px;
+        height: 10px;
+        background: #fff;
+        border: 2px solid #e9ecef;
+        border-radius: 50%;
+    }
+
+    .activity-item.IN { border-left-color: #28a745; }
+    .activity-item.IN::before { border-color: #28a745; }
+    
+    .activity-item.OUT { border-left-color: #dc3545; }
+    .activity-item.OUT::before { border-color: #dc3545; }
+    
+    .activity-item.ADJUST { border-left-color: #ffc107; }
+    .activity-item.ADJUST::before { border-color: #ffc107; }
+
+    .activity-date {
+        font-size: 0.75rem;
+        color: #919da9;
+    }
+
+    .list-item-hover:hover {
+        background: #f8f9fa;
+        cursor: default;
+    }
+
+    .scroll-list {
+        max-height: 350px;
+        overflow-y: auto;
     }
 </style>
 
@@ -265,7 +320,7 @@ $occupancy = get_location_occupancy();
             <div class="card dashboard-card h-100">
                 <div class="card-header glass-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0"> Fast Moving (Top Flow)</h5>
-                    <span class="badge bg-soft-success text-success">This Month</span>
+                    <span class="badge bg-soft-success text-success">Per Day</span>
                 </div>
                 <div class="card-body">
                     <div id="fastMovingList" class="scroll-list">
@@ -308,7 +363,7 @@ $occupancy = get_location_occupancy();
                                     <div class="insight-tile dead-stock-tile">
                                         <div class="tile-value text-danger"><?= number_format($item['current_stock'] ?? 0) ?>
                                         </div>
-                                        <div class="tile-label">Mov: <?= $item['total_movement'] ?></div>
+                                        <div class="tile-label">OUT: <?= number_format($item['total_out'] ?? 0) ?></div>
                                         <div class="tile-name text-truncate" title="<?= htmlspecialchars($item['name']) ?>">
                                             <?= htmlspecialchars($item['name']) ?>
                                         </div>
@@ -459,14 +514,14 @@ $occupancy = get_location_occupancy();
 
         if (typeof $.fn.DataTable !== 'undefined') {
             locationTable = $('#locationTable').DataTable({
-                pageLength: 25,
+                pageLength: 10,
                 order: [[1, 'asc']],
                 columnDefs: [
                     { orderable: false, targets: [0] }
                 ]
             });
             itemTable = $('#itemTable').DataTable({
-                pageLength: 25,
+                pageLength: 10,
                 order: [[1, 'asc']],
                 columnDefs: [
                     { orderable: false, targets: [0] }
@@ -495,7 +550,24 @@ $occupancy = get_location_occupancy();
             },
             colors: ['#28a745', '#dc3545', '#ffc107'],
             dataLabels: { enabled: false },
-            stroke: { curve: 'smooth', width: 2.5 },
+            stroke: { 
+                curve: 'smooth', 
+                width: 3.5,
+                lineCap: 'round'
+            },
+            shadow: {
+                enabled: true,
+                color: '#000',
+                top: 18,
+                left: 7,
+                blur: 10,
+                opacity: 1
+            },
+            markers: {
+                size: 5,
+                strokeWidth: 3,
+                hover: { size: 7 }
+            },
             xaxis: {
                 categories: <?= json_encode($chartData['labels']) ?>,
                 labels: {
@@ -522,9 +594,9 @@ $occupancy = get_location_occupancy();
                 type: 'gradient',
                 gradient: {
                     shadeIntensity: 1,
-                    opacityFrom: 0.45,
-                    opacityTo: 0.05,
-                    stops: [20, 100, 100, 100]
+                    opacityFrom: 0.4,
+                    opacityTo: 0.1,
+                    stops: [0, 90, 100]
                 }
             }
         };
@@ -608,6 +680,7 @@ $occupancy = get_location_occupancy();
                 });
             }
 
+            // Using full path if possible or at least ensuring leading slash if routed
             fetch('module/Action/ac_dashboard.php', {
                 method: 'POST',
                 body: formData
@@ -635,8 +708,8 @@ $occupancy = get_location_occupancy();
                                     `<div class="text-center">${index + 1}</div>`,
                                     `<div class="fw-bold text-dark">${row.location_display}</div>`,
                                     `<div class="text-center fw-semibold text-muted">${row.begin_balance.toLocaleString()}</div>`,
-                                    `<div class="text-center text-success fw-bold">${row.total_in > 0 ? '+' + row.total_in.toLocaleString() : '0'}</div>`,
-                                    `<div class="text-center text-danger fw-bold">${row.total_out > 0 ? '-' + row.total_out.toLocaleString() : '0'}</div>`,
+                                    `<div class="text-center text-success fw-bold">${parseInt(row.total_in) > 0 ? '+' + parseInt(row.total_in).toLocaleString() : '0'}</div>`,
+                                    `<div class="text-center text-danger fw-bold">${parseInt(row.total_out) > 0 ? '-' + parseInt(row.total_out).toLocaleString() : '0'}</div>`,
                                     `<div class="text-center">${adjDisplay}</div>`,
                                     `<div class="text-center"><h6 class="text-primary fw-bold mb-0">${row.end_balance.toLocaleString()}</h6></div>`
                                 ]);
@@ -658,8 +731,8 @@ $occupancy = get_location_occupancy();
                                         <small class="text-muted">${row.item_code} | <span class="badge bg-soft-info text-info">${row.location_display}</span></small>
                                     </div>`,
                                     `<div class="text-center fw-semibold text-muted">${row.begin_balance.toLocaleString()}</div>`,
-                                    `<div class="text-center text-success fw-bold">${row.total_in > 0 ? '+' + row.total_in.toLocaleString() : '0'}</div>`,
-                                    `<div class="text-center text-danger fw-bold">${row.total_out > 0 ? '-' + row.total_out.toLocaleString() : '0'}</div>`,
+                                    `<div class="text-center text-success fw-bold">${parseInt(row.total_in) > 0 ? '+' + parseInt(row.total_in).toLocaleString() : '0'}</div>`,
+                                    `<div class="text-center text-danger fw-bold">${parseInt(row.total_out) > 0 ? '-' + parseInt(row.total_out).toLocaleString() : '0'}</div>`,
                                     `<div class="text-center">${adjDisplay}</div>`,
                                     `<div class="text-center"><h6 class="text-primary fw-bold mb-0">${row.end_balance.toLocaleString()}</h6></div>`
                                 ]);
@@ -709,7 +782,7 @@ $occupancy = get_location_occupancy();
                                 deadList.innerHTML = `<div class="insight-grid">` + data.insights.dead_stock.map(item => `
                             <div class="insight-tile dead-stock-tile">
                                 <div class="tile-value text-danger">${parseInt(item.current_stock || 0).toLocaleString()}</div>
-                                <div class="tile-label">Mov: ${item.total_movement}</div>
+                                <div class="tile-label">OUT: ${parseInt(item.total_out || 0).toLocaleString()}</div>
                                 <div class="tile-name text-truncate" title="${item.name}">${item.name}</div>
                             </div>
                         `).join('') + `</div>`;

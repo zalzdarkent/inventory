@@ -43,7 +43,7 @@ function item_show($id) {
     ];
 }
 
-function item_save($id, $name, $picture_data = null, $description = null) {
+function item_save($id, $name, $picture_data = null, $description = null, $stock_min = 0) {
     if (empty($name)) {
         return [
             'status' => 'error',
@@ -67,7 +67,7 @@ function item_save($id, $name, $picture_data = null, $description = null) {
             $picture = $upload_result['filename'];
         }
         
-        if (update_item($id, $name, $picture, $description)) {
+        if (update_item($id, $name, $picture, $description, $stock_min)) {
             // Delete old picture file if a new one was uploaded
             if ($picture && $old_pic) {
                 $old_path = __DIR__ . '/../../assets/uploads/items/' . $old_pic;
@@ -107,7 +107,7 @@ function item_save($id, $name, $picture_data = null, $description = null) {
         $picture = $upload_result['filename'];
         $item_code = generate_item_code();
         
-        if (insert_item($item_code, $name, $picture, $description)) {
+        if (insert_item($item_code, $name, $picture, $description, $stock_min)) {
             return [
                 'status' => 'success',
                 'message' => 'Item created successfully.',
@@ -228,13 +228,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $id = $_POST['id'] ?? 0;
             $name = trim($_POST['name'] ?? '');
             $description = trim($_POST['description'] ?? '');
+            $stock_min = (int)($_POST['stock_min'] ?? 0);
             
             $picture = null;
             if (isset($_FILES['picture']) && $_FILES['picture']['error'] !== UPLOAD_ERR_NO_FILE) {
                 $picture = $_FILES['picture'];
             }
             
-            $result = item_save($id, $name, $picture, $description);
+            $result = item_save($id, $name, $picture, $description, $stock_min);
             echo json_encode($result);
             exit;
             

@@ -59,5 +59,14 @@ $koneksi = sqlsrv_connect($serverName, $connectionInfo);
 
 
 if (!$koneksi) {
-    die(print_r(sqlsrv_errors(), true));
+    if (defined('AJAX_MODE') && AJAX_MODE === true) {
+        $errors = sqlsrv_errors();
+        $message = "Database connection failed: ";
+        foreach ($errors as $error) {
+            $message .= "[SQLSTATE " . $error['SQLSTATE'] . "] " . $error['message'] . " ";
+        }
+        throw new Exception($message);
+    } else {
+        die(print_r(sqlsrv_errors(), true));
+    }
 }

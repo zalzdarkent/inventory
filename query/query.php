@@ -234,29 +234,29 @@ function get_item_by_id($id) {
     return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
 }
 
-function insert_item($item_code, $name, $picture, $description = null) {
+function insert_item($item_code, $name, $picture, $description = null, $stock_min = 0) {
     global $koneksi;
-    $sql = "INSERT INTO item_table (item_code, name, picture, description, is_active, created_at) 
-            VALUES (?, ?, ?, ?, 1, GETDATE())";
-    $params = array($item_code, $name, $picture, $description);
+    $sql = "INSERT INTO item_table (item_code, name, picture, description, stock_min, is_active, created_at) 
+            VALUES (?, ?, ?, ?, ?, 1, GETDATE())";
+    $params = array($item_code, $name, $picture, $description, $stock_min);
     $stmt = sqlsrv_query($koneksi, $sql, $params);
     
     return $stmt !== false;
 }
 
-function update_item($id, $name, $picture = null, $description = null) {
+function update_item($id, $name, $picture = null, $description = null, $stock_min = 0) {
     global $koneksi;
     
     if ($picture !== null) {
         $sql = "UPDATE item_table 
-                SET name = ?, picture = ?, description = ?, updated_at = GETDATE() 
+                SET name = ?, picture = ?, description = ?, stock_min = ?, updated_at = GETDATE() 
                 WHERE id = ?";
-        $params = array($name, $picture, $description, $id);
+        $params = array($name, $picture, $description, $stock_min, $id);
     } else {
         $sql = "UPDATE item_table 
-                SET name = ?, description = ?, updated_at = GETDATE() 
+                SET name = ?, description = ?, stock_min = ?, updated_at = GETDATE() 
                 WHERE id = ?";
-        $params = array($name, $description, $id);
+        $params = array($name, $description, $stock_min, $id);
     }
     
     $stmt = sqlsrv_query($koneksi, $sql, $params);
@@ -613,7 +613,7 @@ function get_daily_movement_stats($start, $end) {
                     WHEN transaction_type = 'ADJUST' THEN 'ADJUST'
                     ELSE 'OTHER'
                 END as flow_type,
-                SUM(qty) as total_qty
+                SUM(ABS(qty_mutation)) as total_qty
             FROM inventory_log
             WHERE created_at >= ? AND created_at <= ?
             GROUP BY CAST(created_at AS DATE), 
@@ -627,12 +627,18 @@ function get_daily_movement_stats($start, $end) {
             
     $params = array($start . ' 00:00:00', $end . ' 23:59:59');
     $stmt = sqlsrv_query($koneksi, $sql, $params);
-    
     if ($stmt !== false) {
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-            $date = $row['log_date'] instanceof DateTime ? $row['log_date']->format('Y-m-d') : $row['log_date'];
+            $dateVal = $row['log_date'];
+            $date = '';
+            if ($dateVal instanceof DateTime) {
+                $date = $dateVal->format('Y-m-d');
+            } else if (is_string($dateVal)) {
+                $date = substr($dateVal, 0, 10);
+            }
+            
             $type = $row['flow_type'];
-            if (isset($dates[$date]) && isset($dates[$date][$type])) {
+            if ($date && isset($dates[$date]) && isset($dates[$date][$type])) {
                 $dates[$date][$type] = (int)$row['total_qty'];
             }
         }
@@ -660,29 +666,31 @@ function get_daily_movement_stats($start, $end) {
 function get_inventory_insights($start, $end) {
     global $koneksi;
     
-    // 1. Fast Moving (Based on OUT and MOVE_OUT transactions)
+    // 1. Fast Moving (Based on OUT transactions only - periodik per hari)
     $sql_fast = "SELECT TOP 10 
                     i.name, 
-                    SUM(il.qty) as total_qty,
+                    SUM(ABS(il.qty_mutation)) as total_qty,
                     COUNT(il.id) as frequency
                 FROM inventory_log il
                 JOIN item_table i ON il.item_id = i.id
                 WHERE il.created_at >= ? AND il.created_at <= ?
-                AND (il.transaction_type = 'OUT' OR (il.transaction_type = 'MOVE' AND il.notes LIKE '%Transfer to%'))
-                GROUP BY i.name
+                AND il.transaction_type = 'OUT'
+                GROUP BY i.id, i.name
                 ORDER BY total_qty DESC";
     
-    // 2. Dead Stock (Least total movement: OUT + MOVE_OUT + MOVE_IN, but still has stock)
+    // 2. Dead Stock (Item dengan jumlah OUT paling sedikit - fokus pada OUT transactions only)
+    // Termasuk item yang belum pernah OUT sama sekali dalam periode
     $sql_dead = "SELECT TOP 10 
+                    i.id,
                     i.name,
-                    (SELECT ISNULL(SUM(qty), 0) FROM inventory_log WHERE item_id = i.id AND (transaction_type = 'OUT' OR (transaction_type = 'MOVE' AND notes LIKE '%Transfer to%') OR (transaction_type = 'MOVE' AND notes LIKE '%Transfer from%')) AND created_at >= ? AND created_at <= ?) as total_movement,
-                    ISNULL(SUM(il_total.qty_mutation), 0) as current_stock
+                    ISNULL(SUM(CASE WHEN il.transaction_type = 'OUT' THEN ABS(il.qty_mutation) ELSE 0 END), 0) as total_out,
+                    ISNULL((SELECT SUM(qty_mutation) FROM inventory_log WHERE item_id = i.id), 0) as current_stock
                 FROM item_table i
-                LEFT JOIN inventory_log il_total ON i.id = il_total.item_id
+                LEFT JOIN inventory_log il ON i.id = il.item_id 
+                    AND il.created_at >= ? AND il.created_at <= ?
                 WHERE i.is_active = 1
                 GROUP BY i.id, i.name
-                HAVING ISNULL(SUM(il_total.qty_mutation), 0) > 0
-                ORDER BY total_movement ASC, current_stock DESC";
+                ORDER BY total_out ASC, current_stock DESC";
 
     $params_fast = array($start . ' 00:00:00', $end . ' 23:59:59');
     $params_dead = array($start . ' 00:00:00', $end . ' 23:59:59');
@@ -732,6 +740,42 @@ function get_location_occupancy() {
         }
     }
     return $data;
+}
+
+function get_low_stock_items() {
+    global $koneksi;
+    $sql = "SELECT i.name, i.item_code, i.stock_min, SUM(il.qty_mutation) as current_stock
+            FROM item_table i
+            JOIN inventory_log il ON i.id = il.item_id
+            WHERE i.is_active = 1
+            GROUP BY i.id, i.name, i.item_code, i.stock_min
+            HAVING SUM(il.qty_mutation) < i.stock_min
+            ORDER BY (SUM(il.qty_mutation) - i.stock_min) ASC";
+    $stmt = sqlsrv_query($koneksi, $sql);
+    $items = [];
+    if ($stmt !== false) {
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $items[] = $row;
+        }
+    }
+    return $items;
+}
+
+function get_recent_activities($limit = 10) {
+    global $koneksi;
+    $sql = "SELECT TOP $limit il.created_at, il.transaction_type, il.qty_mutation, i.name as item_name, u.username as created_by
+            FROM inventory_log il
+            JOIN item_table i ON il.item_id = i.id
+            LEFT JOIN users u ON il.user_id = u.id
+            ORDER BY il.created_at DESC";
+    $stmt = sqlsrv_query($koneksi, $sql);
+    $logs = [];
+    if ($stmt !== false) {
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $logs[] = $row;
+        }
+    }
+    return $logs;
 }
 
 // ==================== AUTHENTICATION ====================
