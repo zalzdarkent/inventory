@@ -45,16 +45,16 @@ function resolve_route() {
     }
     if ($page == 'log_data') {
         $GLOBALS['content_file'] = "module/md_item.php";
-        $GLOBALS['scripts_file'] = "ui/scripts_location.php";
+        $GLOBALS['scripts_file'] = "ui/scripts.php";
     } elseif ($page == 'log_data_create') {
         $GLOBALS['content_file'] = "module/md_item_insert.php";
-        $GLOBALS['scripts_file'] = "ui/scripts_location.php";
+        $GLOBALS['scripts_file'] = "ui/scripts.php";
     } elseif ($page == 'location') {
         $GLOBALS['content_file'] = "module/md_location.php";
-        $GLOBALS['scripts_file'] = "ui/scripts_location.php";
+        $GLOBALS['scripts_file'] = "ui/scripts.php";
     } elseif ($page == 'location-form') {
         $GLOBALS['content_file'] = "ui/pages/Location/form.php";
-        $GLOBALS['scripts_file'] = "ui/scripts_location.php";
+        $GLOBALS['scripts_file'] = "ui/scripts.php";
     } elseif ($page == 'in_out') {
         $GLOBALS['content_file'] = "module/md_inventory_log.php";
         $GLOBALS['scripts_file'] = "ui/scripts.php";

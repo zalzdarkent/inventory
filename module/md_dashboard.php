@@ -314,28 +314,41 @@ $recent_activities = get_recent_activities();
         </div>
     </div>
 
-    <!-- Insights Group -->
+    <!-- Urgent Alerts & Recent Activity -->
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-lg-6">
             <div class="card dashboard-card h-100">
                 <div class="card-header glass-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0"> Fast Moving (Top Flow)</h5>
-                    <span class="badge bg-soft-success text-success">Per Day</span>
+                    <h5 class="card-title mb-0 text-danger"><i class="feather-alert-triangle me-2"></i>Urgent Stock Alerts</h5>
+                    <span class="badge bg-soft-danger text-danger"><?= count($low_stock) ?> Items</span>
                 </div>
                 <div class="card-body">
-                    <div id="fastMovingList" class="scroll-list">
-                        <?php if (empty($insights['fast_moving'])): ?>
+                    <div id="lowStockList" class="scroll-list">
+                        <?php if (empty($low_stock)): ?>
                             <div class="text-center py-5">
-                                <span class="text-muted">No high-flow items</span>
+                                <i class="feather-check-circle fs-40 text-success mb-3 d-block"></i>
+                                <span class="text-muted">All stock levels are healthy!</span>
                             </div>
                         <?php else: ?>
-                            <div class="insight-grid">
-                                <?php foreach ($insights['fast_moving'] as $item): ?>
-                                    <div class="insight-tile fast-moving-tile">
-                                        <div class="tile-value text-success">+<?= number_format($item['total_qty']) ?></div>
-                                        <div class="tile-label"><?= $item['frequency'] ?>x Transactions</div>
-                                        <div class="tile-name text-truncate" title="<?= htmlspecialchars($item['name']) ?>">
-                                            <?= htmlspecialchars($item['name']) ?>
+                            <div class="list-group list-group-flush">
+                                <?php foreach ($low_stock as $item): ?>
+                                    <div class="list-group-item px-0 list-item-hover border-0 mb-2 rounded-3 p-3 bg-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1 fw-bold text-dark"><?= htmlspecialchars($item['name']) ?></h6>
+                                                <small class="text-muted"><?= htmlspecialchars($item['item_code']) ?></small>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="fw-bold text-danger"><?= number_format($item['current_stock']) ?> / <?= number_format($item['stock_min']) ?></div>
+                                                <small class="text-muted">Stock / Min</small>
+                                            </div>
+                                        </div>
+                                        <div class="progress mt-2" style="height: 4px;">
+                                            <?php 
+                                                $percent = ($item['stock_min'] > 0) ? ($item['current_stock'] / $item['stock_min']) * 100 : 100;
+                                                $percent = min(100, $percent);
+                                            ?>
+                                            <div class="progress-bar bg-danger" style="width: <?= $percent ?>%"></div>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -345,31 +358,36 @@ $recent_activities = get_recent_activities();
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-lg-6">
             <div class="card dashboard-card h-100">
                 <div class="card-header glass-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0"> Dead Stock (Minimal Movement)</h5>
-                    <span class="badge bg-soft-danger text-danger">Action Required</span>
+                    <h5 class="card-title mb-0 text-primary"><i class="feather-activity me-2"></i>Recent Activity Feed</h5>
                 </div>
                 <div class="card-body">
-                    <div id="deadStockList" class="scroll-list">
-                        <?php if (empty($insights['dead_stock'])): ?>
+                    <div id="activityFeedList" class="activity-feed">
+                        <?php if (empty($recent_activities)): ?>
                             <div class="text-center py-5">
-                                <span class="text-muted">All active!</span>
+                                <span class="text-muted">No recent activities found</span>
                             </div>
                         <?php else: ?>
-                            <div class="insight-grid">
-                                <?php foreach ($insights['dead_stock'] as $item): ?>
-                                    <div class="insight-tile dead-stock-tile">
-                                        <div class="tile-value text-danger"><?= number_format($item['current_stock'] ?? 0) ?>
-                                        </div>
-                                        <div class="tile-label">OUT: <?= number_format($item['total_out'] ?? 0) ?></div>
-                                        <div class="tile-name text-truncate" title="<?= htmlspecialchars($item['name']) ?>">
-                                            <?= htmlspecialchars($item['name']) ?>
-                                        </div>
+                            <?php foreach ($recent_activities as $activity): ?>
+                                <div class="activity-item <?= $activity['transaction_type'] ?>">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-bold text-dark"><?= htmlspecialchars($activity['item_name']) ?></span>
+                                        <span class="activity-date">
+                                            <?= ($activity['created_at'] instanceof DateTime) ? $activity['created_at']->format('H:i, d M') : date('H:i, d M', strtotime($activity['created_at'] ?? 'now')) ?>
+                                        </span>
                                     </div>
-                                <?php endforeach; ?>
-                            </div>
+                                    <div class="mt-1 d-flex align-items-center justify-content-between">
+                                        <span class="fs-12">
+                                            <span class="badge bg-soft-<?= $activity['transaction_type'] == 'IN' ? 'success' : ($activity['transaction_type'] == 'OUT' ? 'danger' : 'warning') ?> text-<?= $activity['transaction_type'] == 'IN' ? 'success' : ($activity['transaction_type'] == 'OUT' ? 'danger' : 'warning') ?> fs-10 me-1">
+                                                <?= $activity['transaction_type'] ?>
+                                            </span>
+                                            <?= number_format(abs($activity['qty_mutation'])) ?> units by <strong><?= htmlspecialchars($activity['created_by'] ?? 'System') ?></strong>
+                                        </span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -762,43 +780,79 @@ $recent_activities = get_recent_activities();
                             });
                         }
 
-                        if (data.insights) {
-                            const fastList = document.getElementById('fastMovingList');
-                            const deadList = document.getElementById('deadStockList');
-
-                            if (data.insights.fast_moving && data.insights.fast_moving.length > 0) {
-                                fastList.innerHTML = `<div class="insight-grid">` + data.insights.fast_moving.map(item => `
-                            <div class="insight-tile fast-moving-tile">
-                                <div class="tile-value text-success">+${parseInt(item.total_qty).toLocaleString()}</div>
-                                <div class="tile-label">${item.frequency}x Transactions</div>
-                                <div class="tile-name text-truncate" title="${item.name}">${item.name}</div>
-                            </div>
-                        `).join('') + `</div>`;
+                        if (data.low_stock) {
+                            const lowStockList = document.getElementById('lowStockList');
+                            if (data.low_stock.length > 0) {
+                                let html = '<div class="list-group list-group-flush">';
+                                data.low_stock.forEach(item => {
+                                    let percent = (item.stock_min > 0) ? (item.current_stock / item.stock_min) * 100 : 100;
+                                    percent = Math.min(100, percent);
+                                    html += `
+                                        <div class="list-group-item px-0 list-item-hover border-0 mb-2 rounded-3 p-3 bg-light">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h6 class="mb-1 fw-bold text-dark">${item.name}</h6>
+                                                    <small class="text-muted">${item.item_code}</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <div class="fw-bold text-danger">${parseInt(item.current_stock).toLocaleString()} / ${parseInt(item.stock_min).toLocaleString()}</div>
+                                                    <small class="text-muted">Stock / Min</small>
+                                                </div>
+                                            </div>
+                                            <div class="progress mt-2" style="height: 4px;">
+                                                <div class="progress-bar bg-danger" style="width: ${percent}%"></div>
+                                            </div>
+                                        </div>`;
+                                });
+                                html += '</div>';
+                                lowStockList.innerHTML = html;
                             } else {
-                                fastList.innerHTML = '<div class="text-center py-5"><span class="text-muted">No data</span></div>';
+                                lowStockList.innerHTML = '<div class="text-center py-5"><i class="feather-check-circle fs-40 text-success mb-3 d-block"></i><span class="text-muted">All stock levels are healthy!</span></div>';
                             }
+                        }
 
-                            if (data.insights.dead_stock && data.insights.dead_stock.length > 0) {
-                                deadList.innerHTML = `<div class="insight-grid">` + data.insights.dead_stock.map(item => `
-                            <div class="insight-tile dead-stock-tile">
-                                <div class="tile-value text-danger">${parseInt(item.current_stock || 0).toLocaleString()}</div>
-                                <div class="tile-label">OUT: ${parseInt(item.total_out || 0).toLocaleString()}</div>
-                                <div class="tile-name text-truncate" title="${item.name}">${item.name}</div>
-                            </div>
-                        `).join('') + `</div>`;
+                        if (data.recent_activities) {
+                            const activityList = document.getElementById('activityFeedList');
+                            if (data.recent_activities.length > 0) {
+                                activityList.innerHTML = data.recent_activities.map(activity => {
+                                    const date = new Date(activity.created_at);
+                                    const timeStr = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0') + ', ' + date.getDate() + ' ' + date.toLocaleString('en-us', { month: 'short' });
+                                    const typeClass = activity.transaction_type;
+                                    const badgeClass = activity.transaction_type === 'IN' ? 'success' : (activity.transaction_type === 'OUT' ? 'danger' : 'warning');
+                                    
+                                    return `
+                                        <div class="activity-item ${typeClass}">
+                                            <div class="d-flex justify-content-between">
+                                                <span class="fw-bold text-dark">${activity.item_name}</span>
+                                                <span class="activity-date">${timeStr}</span>
+                                            </div>
+                                            <div class="mt-1 d-flex align-items-center justify-content-between">
+                                                <span class="fs-12">
+                                                    <span class="badge bg-soft-${badgeClass} text-${badgeClass} fs-10 me-1">${activity.transaction_type}</span>
+                                                    ${Math.abs(activity.qty_mutation).toLocaleString()} units by <strong>${activity.created_by || 'System'}</strong>
+                                                </span>
+                                            </div>
+                                        </div>`;
+                                }).join('');
                             } else {
-                                deadList.innerHTML = '<div class="text-center py-5"><span class="text-muted">No data</span></div>';
+                                activityList.innerHTML = '<div class="text-center py-5"><span class="text-muted">No recent activities found</span></div>';
                             }
                         }
 
                         if (typeof Swal !== 'undefined') Swal.close();
                     } else {
-                        throw new Error(data.message || 'Failed to fetch data');
+                        throw new Error(data.message || 'Server returned an error');
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    if (typeof Swal !== 'undefined') Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+                    console.error('Dashboard Update Error:', error);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ 
+                            icon: 'error', 
+                            title: 'Update Failed', 
+                            text: error.message + (error.debug_info ? '\nCheck console for details.' : '')
+                        });
+                    }
                 });
         });
     });

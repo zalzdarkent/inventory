@@ -594,15 +594,37 @@ function get_daily_movement_stats($start, $end) {
     
     // Create a list of all dates in the range to ensure no gaps in the chart
     $dates = [];
-    $start_dt = new DateTime($start);
-    $end_dt = new DateTime($end);
-    $end_dt->modify('+1 day'); // Include the end date
-    
-    $interval = new DateInterval('P1D');
-    $period = new DatePeriod($start_dt, $interval, $end_dt);
-    
-    foreach ($period as $dt) {
-        $dates[$dt->format('Y-m-d')] = ['IN' => 0, 'OUT' => 0, 'ADJUST' => 0];
+    try {
+        $start_dt = new DateTime($start);
+        $end_dt = new DateTime($end);
+        
+        // Safety check: limit range to 1 year to prevent memory issues
+        $diff = $start_dt->diff($end_dt);
+        if ($diff->days > 366) {
+             $start_dt = clone $end_dt;
+             $start_dt->modify('-1 year');
+        }
+        
+        $temp_start = clone $start_dt;
+        $temp_end = clone $end_dt;
+        $temp_end->modify('+1 day'); // Include the end date
+        
+        $interval = new DateInterval('P1D');
+        $period = new DatePeriod($temp_start, $interval, $temp_end);
+        
+        foreach ($period as $dt) {
+            $dates[$dt->format('Y-m-d')] = ['IN' => 0, 'OUT' => 0, 'ADJUST' => 0];
+        }
+    } catch (Throwable $e) {
+        // Fallback to current month if dates are invalid
+        $current_st = new DateTime(date('Y-m-01'));
+        $current_en = new DateTime(date('Y-m-t'));
+        $current_en->modify('+1 day');
+        $interval = new DateInterval('P1D');
+        $period = new DatePeriod($current_st, $interval, $current_en);
+        foreach ($period as $dt) {
+            $dates[$dt->format('Y-m-d')] = ['IN' => 0, 'OUT' => 0, 'ADJUST' => 0];
+        }
     }
 
     $sql = "SELECT 
